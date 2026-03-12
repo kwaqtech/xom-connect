@@ -7,11 +7,13 @@ import { LoaderCircle, MapPinned, Radar, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+    getSetupHelpText,
     formatDistance,
     formatPostType,
     formatTimestamp,
     hasMapCoordinates,
     isSchemaMissing,
+    isSupabaseConfigMissing,
 } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { useNearbyPosts } from "@/src/hooks/useNearbyPosts";
@@ -42,6 +44,8 @@ export default function NearbyPostsExplorer({
     const [radiusMeters, setRadiusMeters] = useState(1000);
     const { posts, error, loading, location, locationError } = useNearbyPosts(radiusMeters);
     const schemaMissing = isSchemaMissing(error);
+    const configMissing = isSupabaseConfigMissing(error);
+    const setupHelpText = getSetupHelpText(error);
     const canRenderMap = Boolean(showMap && location && posts.some(hasMapCoordinates));
 
     return (
@@ -105,9 +109,11 @@ export default function NearbyPostsExplorer({
                 </div>
             ) : showMap && !loading ? (
                 <div className="mt-6 rounded-[1.75rem] border border-dashed border-border bg-muted/40 p-5 text-sm leading-6 text-muted-foreground">
-                    {schemaMissing
-                        ? "Map đang chờ version mới của RPC `get_nearby_posts`. Hãy chạy lại `supabase/schema.sql` để trả thêm lat/lng cho marker."
-                        : "Map sẽ hiện marker khi nearby query trả về bài đăng có tọa độ."}
+                    {configMissing
+                        ? "Map đang chờ cấu hình Supabase env để gọi RPC nearby posts."
+                        : schemaMissing
+                            ? "Map đang chờ version mới của RPC `get_nearby_posts`. Hãy chạy lại `supabase/schema.sql` để trả thêm lat/lng cho marker."
+                            : "Map sẽ hiện marker khi nearby query trả về bài đăng có tọa độ."}
                 </div>
             ) : null}
 
@@ -116,12 +122,10 @@ export default function NearbyPostsExplorer({
                     <div className="rounded-[1.75rem] border border-destructive/20 bg-destructive/5 p-5 text-sm text-destructive">
                         <div className="flex items-center gap-2 font-medium">
                             <TriangleAlert className="size-4" />
-                            Nearby query chưa chạy sạch.
+                            {configMissing ? "Nearby query chưa có cấu hình Supabase." : "Nearby query chưa chạy sạch."}
                         </div>
                         <p className="mt-2">{error}</p>
-                        {schemaMissing ? (
-                            <p className="mt-2">Hãy chạy lại file `supabase/schema.sql` trong Supabase SQL Editor rồi reload trang.</p>
-                        ) : null}
+                        {setupHelpText ? <p className="mt-2">{setupHelpText}</p> : null}
                     </div>
                 ) : posts.length > 0 ? (
                     posts.map((post) => (

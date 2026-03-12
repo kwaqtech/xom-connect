@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Xóm Connect
 
-## Getting Started
+Mobile-first Next.js app kết nối cư dân theo bán kính gần, dùng Supabase cho Auth, Storage và Postgres/PostGIS.
 
-First, run the development server:
+## Local Setup
+
+1. Cài dependencies:
+
+```bash
+npm install
+```
+
+2. Tạo `.env.local` từ `.env.example` và điền giá trị thật:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
+
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` vẫn được hỗ trợ làm fallback nếu bạn chưa dùng publishable key mới.
+
+3. Chạy toàn bộ file `supabase/schema.sql` trong Supabase SQL Editor.
+
+4. Khởi động app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App mặc định mở ở `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Vercel Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Thêm các biến môi trường sau vào Vercel Project Settings → Environment Variables:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-To learn more about Next.js, take a look at the following resources:
+Hoặc dùng `NEXT_PUBLIC_SUPABASE_ANON_KEY` nếu chưa có publishable key.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Commands
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev
+npm run lint
+npm run build
+```
 
-## Deploy on Vercel
+## Current Scope
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Supabase Auth cho login/register
+- Lưu hồ sơ người dùng và vị trí
+- Tạo bài đăng với ảnh trên Supabase Storage
+- Nearby feed bằng PostGIS RPC `get_nearby_posts`
+- Mobile-first UI với bottom navigation

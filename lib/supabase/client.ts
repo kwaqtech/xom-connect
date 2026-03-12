@@ -1,4 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
-import { supabaseKey, supabaseUrl } from "@/lib/supabase/config";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseConfig } from "@/lib/supabase/config";
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+let browserSupabaseClient: SupabaseClient | null = null;
+
+export function getBrowserSupabaseClient() {
+    if (!supabaseConfig.isConfigured) {
+        return null;
+    }
+
+    browserSupabaseClient ??= createClient(
+        supabaseConfig.supabaseUrl as string,
+        supabaseConfig.supabaseKey as string
+    );
+
+    return browserSupabaseClient;
+}
+
+export const supabase = getBrowserSupabaseClient();

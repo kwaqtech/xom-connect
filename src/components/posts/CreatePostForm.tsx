@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { isSchemaMissing, postTypeOptions, type PostType } from "@/lib/posts";
+import { getSetupHelpText, postTypeOptions, type PostType } from "@/lib/posts";
 import { supabase } from "@/lib/supabase/client";
+import { supabaseConfig } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 import { useGeolocation } from "@/src/hooks/useGeolocation";
 
@@ -39,18 +40,30 @@ export default function CreatePostForm() {
   const router = useRouter();
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
   const [session, setSession] = useState<Session | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(Boolean(supabase));
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<PostFormState>(initialFormState);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const setupHelpText = getSetupHelpText(supabaseConfig.errorMessage);
 
   useEffect(() => {
     let active = true;
 
+    if (!supabase) {
+      setError(supabaseConfig.errorMessage);
+      setLoadingSession(false);
+
+      return () => {
+        active = false;
+      };
+    }
+
+    const client = supabase;
+
     const loadSession = async () => {
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await client.auth.getSession();
 
       if (!active) {
         return;
@@ -68,7 +81,7 @@ export default function CreatePostForm() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setLoadingSession(false);
     });
@@ -90,6 +103,12 @@ export default function CreatePostForm() {
     setError(null);
 
     try {
+      const client = supabase;
+
+      if (!client) {
+        throw new Error(supabaseConfig.errorMessage ?? "Supabase chưa được cấu hình.");
+      }
+
       if (!session?.user) {
         throw new Error("Bạn cần đăng nhập trước khi tạo bài đăng.");
       }
@@ -102,7 +121,7 @@ export default function CreatePostForm() {
 
       if (imageFile) {
         const filePath = `${session.user.id}/${Date.now()}-${crypto.randomUUID()}.${getFileExtension(imageFile)}`;
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await client.storage
           .from("post-images")
           .upload(filePath, imageFile, {
             cacheControl: "3600",
@@ -115,12 +134,12 @@ export default function CreatePostForm() {
 
         const {
           data: { publicUrl },
-        } = supabase.storage.from("post-images").getPublicUrl(filePath);
+        } = client.storage.from("post-images").getPublicUrl(filePath);
 
         imageUrl = publicUrl;
       }
 
-      const { error: createError } = await supabase.rpc("create_post_with_location", {
+      const { error: createError } = await client.rpc("create_post_with_location", {
         post_type: form.type,
         post_title: form.title.trim(),
         post_description: form.description.trim(),
@@ -150,16 +169,51 @@ export default function CreatePostForm() {
         submitError instanceof Error
           ? submitError.message
           : "Không thể tạo bài đăng ở thời điểm này.";
+      const nextSetupHelpText = getSetupHelpText(messageText);
 
       setError(
-        isSchemaMissing(messageText) || messageText.includes("Bucket not found")
+        messageText.includes("Bucket not found")
           ? `${messageText} Hãy chạy lại file supabase/schema.sql để tạo RPC và bucket Storage.`
-          : messageText
+          : nextSetupHelpText
+            ? `${messageText} ${nextSetupHelpText}`
+            : messageText
       );
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!supabase) {
+    return (
+      <section className="rounded-[2rem] border border-border/70 bg-background/90 p-6 shadow-sm backdrop-blur">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-emerald-700">Supabase chưa sẵn sàng</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+              Cần cấu hình env trước khi tạo bài đăng
+            </h2>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
+              Form này cần Supabase Auth, Storage và RPC để hoạt động đúng.
+            </p>
+          </div>
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-700">
+            <ShieldCheck className="size-7" />
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm leading-6 text-destructive">
+            {supabaseConfig.errorMessage}
+          </p>
+          {setupHelpText ? (
+            <p className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+              {setupHelpText}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
 
   if (loadingSession) {
     return (

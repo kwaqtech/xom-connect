@@ -5,8 +5,10 @@ import type { Session } from "@supabase/supabase-js";
 import { LoaderCircle, LogOut, ShieldCheck, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getSetupHelpText } from "@/lib/posts";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
+import { supabaseConfig } from "@/lib/supabase/config";
 import ProfileDetailsCard from "@/src/components/auth/ProfileDetailsCard";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -17,16 +19,28 @@ export default function ProfileAuthPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [session, setSession] = useState<Session | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(Boolean(supabase));
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const setupHelpText = getSetupHelpText(supabaseConfig.errorMessage);
 
   useEffect(() => {
     let mounted = true;
 
+    if (!supabase) {
+      setError(supabaseConfig.errorMessage);
+      setLoadingSession(false);
+
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const client = supabase;
+
     const loadSession = async () => {
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      const { data, error: sessionError } = await client.auth.getSession();
 
       if (!mounted) {
         return;
@@ -44,7 +58,7 @@ export default function ProfileAuthPanel() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setLoadingSession(false);
     });
@@ -66,8 +80,14 @@ export default function ProfileAuthPanel() {
     setSubmitting(true);
 
     try {
+      const client = supabase;
+
+      if (!client) {
+        throw new Error(supabaseConfig.errorMessage ?? "Supabase chưa được cấu hình.");
+      }
+
       if (mode === "sign-up") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await client.auth.signUp({
           email,
           password,
           options: {
@@ -87,7 +107,7 @@ export default function ProfileAuthPanel() {
             : "Đăng ký thành công. Nếu Supabase bật xác thực email, hãy kiểm tra hộp thư để xác nhận tài khoản."
         );
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await client.auth.signInWithPassword({
           email,
           password,
         });
@@ -116,7 +136,13 @@ export default function ProfileAuthPanel() {
     setSubmitting(true);
 
     try {
-      const { error: signOutError } = await supabase.auth.signOut();
+      const client = supabase;
+
+      if (!client) {
+        throw new Error(supabaseConfig.errorMessage ?? "Supabase chưa được cấu hình.");
+      }
+
+      const { error: signOutError } = await client.auth.signOut();
 
       if (signOutError) {
         throw signOutError;
@@ -133,6 +159,32 @@ export default function ProfileAuthPanel() {
       setSubmitting(false);
     }
   };
+
+  if (!supabase) {
+    return (
+      <section className="space-y-4 rounded-[2rem] border border-border/70 bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ShieldCheck className="size-6" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Supabase chưa sẵn sàng</p>
+            <h2 className="text-lg font-semibold text-foreground">App cần env để bật đăng nhập và dữ liệu</h2>
+          </div>
+        </div>
+
+        <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {supabaseConfig.errorMessage}
+        </p>
+
+        {setupHelpText ? (
+          <p className="rounded-2xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+            {setupHelpText}
+          </p>
+        ) : null}
+      </section>
+    );
+  }
 
   if (loadingSession) {
     return (

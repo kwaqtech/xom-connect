@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { NearbyPost } from "@/lib/posts";
 import { supabase } from "@/lib/supabase/client";
+import { supabaseConfig } from "@/lib/supabase/config";
 import { useGeolocation } from "@/src/hooks/useGeolocation";
 
 export function useNearbyPosts(radiusMeters: number) {
@@ -12,6 +13,24 @@ export function useNearbyPosts(radiusMeters: number) {
 
     useEffect(() => {
         let active = true;
+
+        if (!supabase) {
+            void Promise.resolve().then(() => {
+                if (!active) {
+                    return;
+                }
+
+                setPosts([]);
+                setError(supabaseConfig.errorMessage);
+                setQueryLoading(false);
+            });
+
+            return () => {
+                active = false;
+            };
+        }
+
+        const client = supabase;
 
         if (!location) {
             if (!locationLoading) {
@@ -40,7 +59,7 @@ export function useNearbyPosts(radiusMeters: number) {
 
             setQueryLoading(true);
 
-            const { data, error: queryError } = await supabase.rpc("get_nearby_posts", {
+            const { data, error: queryError } = await client.rpc("get_nearby_posts", {
                 user_lat: location.lat,
                 user_lng: location.lng,
                 radius_meters: radiusMeters,

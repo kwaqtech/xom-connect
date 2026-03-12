@@ -35,6 +35,14 @@ export const postTypeOptions: Array<{ value: PostType; label: string }> = [
   { value: "service", label: "Dịch vụ" },
 ];
 
+export function isSupabaseConfigMissing(errorMessage: string | null) {
+  return (
+    errorMessage?.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+    errorMessage?.includes("Supabase client key") ||
+    false
+  );
+}
+
 export function isSchemaMissing(errorMessage: string | null) {
   return (
     errorMessage?.includes("Could not find the table") ||
@@ -44,6 +52,18 @@ export function isSchemaMissing(errorMessage: string | null) {
     errorMessage?.includes("function public.create_post_with_location") ||
     false
   );
+}
+
+export function getSetupHelpText(errorMessage: string | null) {
+  if (isSupabaseConfigMissing(errorMessage)) {
+    return "Hãy thêm NEXT_PUBLIC_SUPABASE_URL và NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY vào .env.local hoặc Vercel Project Settings → Environment Variables.";
+  }
+
+  if (isSchemaMissing(errorMessage)) {
+    return "Hãy chạy lại file supabase/schema.sql trong Supabase SQL Editor rồi reload trang.";
+  }
+
+  return null;
 }
 
 export function formatPostType(type: string) {

@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { isSchemaMissing } from "@/lib/posts";
+import { getSetupHelpText, isSupabaseConfigMissing } from "@/lib/posts";
 import { getLatestPosts } from "@/lib/supabase/posts";
 import NearbyPostsExplorer from "@/src/components/posts/NearbyPostsExplorer";
 
@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const { count, errorMessage } = await getLatestPosts(1);
-  const schemaMissing = isSchemaMissing(errorMessage);
+  const configMissing = isSupabaseConfigMissing(errorMessage);
+  const setupHelpText = getSetupHelpText(errorMessage);
 
   return (
     <div className="min-h-full bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.22),_transparent_42%),linear-gradient(180deg,_rgba(255,255,255,1)_0%,_rgba(248,250,252,1)_100%)] px-4 pb-10 pt-6">
@@ -55,14 +56,12 @@ export default async function Home() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 font-medium text-foreground">
                     <TriangleAlert className="size-4 text-amber-600" />
-                    Truy vấn `select * from posts` đã chạm tới Supabase nhưng trả về lỗi.
+                    {configMissing
+                      ? "App đã render nhưng Supabase chưa được cấu hình đầy đủ."
+                      : "Truy vấn `select * from posts` đã chạm tới Supabase nhưng trả về lỗi."}
                   </div>
                   <p>{errorMessage}</p>
-                  {schemaMissing ? (
-                    <p>
-                      Hãy mở Supabase SQL Editor và chạy file `supabase/schema.sql`, sau đó reload lại trang này.
-                    </p>
-                  ) : null}
+                  {setupHelpText ? <p>{setupHelpText}</p> : null}
                 </div>
               ) : (
                 <div className="space-y-2">

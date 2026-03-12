@@ -6,6 +6,7 @@ import { LoaderCircle, MapPinned, Save, Sparkles, TriangleAlert } from "lucide-r
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase/client";
+import { supabaseConfig } from "@/lib/supabase/config";
 import { useGeolocation } from "@/src/hooks/useGeolocation";
 
 type UserProfile = {
@@ -36,7 +37,7 @@ export default function ProfileDetailsCard({ user }: { user: User }) {
   const [displayName, setDisplayName] = useState(getDefaultDisplayName(user));
   const [phone, setPhone] = useState("");
   const [karmaScore, setKarmaScore] = useState(0);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(Boolean(supabase));
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +45,19 @@ export default function ProfileDetailsCard({ user }: { user: User }) {
   useEffect(() => {
     let active = true;
 
+    if (!supabase) {
+      setError(supabaseConfig.errorMessage);
+      setProfileLoading(false);
+
+      return () => {
+        active = false;
+      };
+    }
+
+    const client = supabase;
+
     const loadProfile = async () => {
-      const { data, error: profileError } = await supabase
+      const { data, error: profileError } = await client
         .from("users")
         .select("display_name, phone, karma_score")
         .eq("id", user.id)
@@ -81,6 +93,12 @@ export default function ProfileDetailsCard({ user }: { user: User }) {
     setSubmitting(true);
 
     try {
+      const client = supabase;
+
+      if (!client) {
+        throw new Error(supabaseConfig.errorMessage ?? "Supabase chưa được cấu hình.");
+      }
+
       const trimmedDisplayName = displayName.trim() || getDefaultDisplayName(user);
       const trimmedPhone = phone.trim();
       const avatarUrl =
@@ -105,7 +123,7 @@ export default function ProfileDetailsCard({ user }: { user: User }) {
         payload.location = `POINT(${location.lng} ${location.lat})`;
       }
 
-      const { error: saveError } = await supabase
+      const { error: saveError } = await client
         .from("users")
         .upsert(payload, { onConflict: "id" });
 
